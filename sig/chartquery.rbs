@@ -1,0 +1,98 @@
+module ChartQuery
+  VERSION: String
+  ENDPOINTS: Hash[String, Hash[Symbol, untyped]]
+
+  class Error < StandardError
+  end
+  class ConfigurationError < Error
+  end
+  class SerializationError < Error
+    attr_reader param: String?
+    def initialize: (String message, ?String? param) -> void
+  end
+  class TransportError < Error
+  end
+  class APIError < Error
+    attr_reader status: Integer
+    attr_reader error_message: String?
+    attr_reader response_body: untyped
+    attr_reader raw_response: RawResponse
+  end
+  class ResponseDecodingError < Error
+    attr_reader raw_response: RawResponse
+  end
+  class JobTimeoutError < Error
+    attr_reader job_id: String
+    attr_reader last_response: JsonResponse?
+  end
+
+  class RawResponse < Struct[untyped]
+    attr_accessor status: Integer
+    attr_accessor headers: Hash[String, Array[String]]
+    attr_accessor content_type: String?
+    attr_accessor body: String
+  end
+
+  class JsonResponse
+    attr_reader data: untyped
+    attr_reader raw_response: RawResponse
+    def kind: () -> :json
+    def json?: () -> true
+    def binary?: () -> false
+  end
+  class BinaryResponse
+    attr_reader bytes: String
+    attr_reader content_type: String?
+    attr_reader raw_response: RawResponse
+    def kind: () -> :binary
+    def json?: () -> false
+    def binary?: () -> true
+    def save: (String path) -> Integer
+  end
+
+  class BatchResult < Struct[untyped]
+    attr_accessor index: Integer
+    attr_accessor value: untyped
+    attr_accessor error: StandardError?
+    def ok?: () -> bool
+  end
+
+  type response = JsonResponse | BinaryResponse
+  type request_options = { ?method: String, ?timeout: Numeric?, ?headers: Hash[String, String], ?max_retries: Integer }
+
+  module Operations
+    def barcode: (data: String, ?type: String, ?height: Numeric, ?color: String, ?show_text: bool, ?text_position: String, ?text_align: String, ?font_size: Numeric, ?font_family: String, ?bar_width: Numeric, ?bar_gap: Numeric, ?background: String, ?margin: Numeric, ?margin_top: Numeric, ?margin_bottom: Numeric, ?margin_left: Numeric, ?margin_right: Numeric, ?rotation: Numeric, ?bearer_bars: bool, ?unit: String, ?aria_label: String, ?title: String, ?desc: String, ?format: String, ?share: bool, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> response
+    def chart: (query: String, ?version: String, ?share: bool, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> response
+    def chart_ai: (prompt: String, ?raw_data: String, ?title: String, ?subtitle: String, ?legend: String, ?format: String, ?width: Numeric, ?height: Numeric, ?background: String, ?device_pixel_ratio: Numeric, ?share: bool, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> JsonResponse
+    def chart_render: (id: String, ?title: String, ?labels: String, ?data1: String, ?width: String, ?height: String, ?format: String, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> response
+    def chart_view: (id: String, ?share: bool, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> JsonResponse
+    def diagram: (type: String, query: String, ?format: String, ?share: bool, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> response
+    def diagram_ai: (prompt: String, ?diagram_type: String, ?output_format: String, ?share: bool, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> JsonResponse
+    def diagram_render: (id: String, ?format: String, ?query: String, ?share: bool, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> response
+    def diagram_view: (id: String, ?share: bool, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> JsonResponse
+    def jobs: (id: String, ?request_options: request_options?) -> JsonResponse
+    def label: (?format: String, ?share: bool, query: String, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> response
+    def label_compile: (width: Numeric, ?height: Numeric, ?unit: String, ?dpi: Numeric, ?gap: Numeric, ?speed: Numeric, ?density: Numeric, ?direction: Numeric, ?copies: Numeric, ?printer: String, elements: Array[untyped], language: String, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> JsonResponse
+    def label_convert: (source: String, from: String, to: String, ?dpi: Numeric, ?speed: Numeric, ?density: Numeric, ?copies: Numeric, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> JsonResponse
+    def label_parse: (source: String, language: String, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> JsonResponse
+    def label_render: (id: String, ?format: String, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> response
+    def label_validate: (source: String, language: String, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> JsonResponse
+    def label_view: (id: String, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> JsonResponse
+    def qrcode: (data: String, ?size: Numeric, ?ec_level: String, ?dot_type: String, ?color: String, ?shape: String, ?dot_size: Numeric, ?background: String, ?margin: Numeric, ?version: Numeric, ?mode: String, ?mask: Numeric, ?unit: String, ?xml_declaration: bool, ?aria_label: String, ?title: String, ?desc: String, ?format: String, ?share: bool, ?fields: String, ?is_async: bool, ?soft_fail: bool, ?request_options: request_options?) -> response
+    def stats: (?engine: String, ?path: String, ?request_options: request_options?) -> JsonResponse
+    def usage: (?request_options: request_options?) -> JsonResponse
+  end
+
+  class Client
+    include Operations
+    DEFAULT_CONCURRENCY: Integer
+    MAX_RETRIES: Integer
+    RETRY_BACKOFF_FACTOR: Float
+    DEFAULT_RETRY_DELAY: Float
+    DEFAULT_TIMEOUT: Integer
+    def initialize: (?api_key: String?, ?base_url: String, ?timeout: Numeric?, ?headers: Hash[untyped, untyped], ?max_retries: Integer, ?retry_delay: Numeric, ?transport: untyped) -> void
+    def request: (String | Symbol method, String path, ?Hash[untyped, untyped]? params, ?timeout: Numeric?, ?headers: Hash[untyped, untyped]?, ?max_retries: Integer?) -> response
+    def batch: [I, T] (Enumerable[I] items, ?concurrency: Integer) { (I item) -> T } -> Array[BatchResult]
+    def wait_for_job: (String job_id, ?interval: Numeric, ?timeout: Numeric) ?{ (untyped job) -> void } -> JsonResponse
+  end
+end
